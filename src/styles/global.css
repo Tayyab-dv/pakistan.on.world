@@ -109,16 +109,29 @@ body {
   mix-blend-mode: overlay;
 }
 
+/* Two washes, both atmospheric rather than structural — the brief rules out
+   panels, cards and scrims, so legibility has to come from light.
+
+   The first is a conventional vignette. The second deepens the lower-left
+   corner specifically, where the editorial copy sits: landmarks orbit through
+   that quadrant on their way around the globe, and without it the sentence has
+   to compete with whatever happens to be passing behind it. */
 .vignette {
   position: absolute;
   inset: 0;
   z-index: 4;
   pointer-events: none;
-  background: radial-gradient(
-    ellipse 78% 68% at 50% 46%,
-    transparent 42%,
-    color-mix(in srgb, var(--fog) 88%, transparent) 100%
-  );
+  background:
+    radial-gradient(
+      ellipse 62% 58% at 12% 78%,
+      color-mix(in srgb, var(--fog) 82%, transparent) 0%,
+      transparent 68%
+    ),
+    radial-gradient(
+      ellipse 78% 68% at 50% 46%,
+      transparent 42%,
+      color-mix(in srgb, var(--fog) 88%, transparent) 100%
+    );
 }
 
 /* ---------------------------------------------------------------------------

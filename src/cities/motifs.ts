@@ -17,7 +17,16 @@ import type { RGB, Theme } from './themes'
  * choreography follows automatically.
  */
 
-export type PaletteRole = 'key' | 'accent' | 'atmo' | 'rim' | 'ink' | 'cloud' | 'surface'
+export type PaletteRole =
+  | 'key'
+  | 'accent'
+  | 'atmo'
+  | 'rim'
+  | 'ink'
+  | 'cloud'
+  | 'surface'
+  /** The scene background. A motif using this reads as a true silhouette. */
+  | 'fog'
 
 export function paletteColour(theme: Theme, role: PaletteRole): RGB {
   switch (role) {
@@ -35,6 +44,8 @@ export function paletteColour(theme: Theme, role: PaletteRole): RGB {
       return theme.cloudTint
     case 'surface':
       return theme.surfaceTint
+    case 'fog':
+      return theme.fog
   }
 }
 

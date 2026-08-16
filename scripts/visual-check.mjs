@@ -40,11 +40,18 @@ for (let city = 0; city < 6; city += 1) {
 /** The five interior boundaries, where city ownership must hand over cleanly. */
 const BOUNDARIES = [5, 10, 15, 20, 25]
 
+/**
+ * `--quick` captures the screenshot matrix and the cheap per-state assertions
+ * but skips the slow sweeps (fade-in-the-open, reverse symmetry, dot landing,
+ * reduced motion). It is the iteration loop; the full run is the gate.
+ */
 function parseArgs(argv) {
-  const args = { url: null, states: null, keepServer: false }
+  const args = { url: null, states: null, quick: false, only: null }
   for (let i = 0; i < argv.length; i += 1) {
     if (argv[i] === '--url') args.url = argv[++i]
     else if (argv[i] === '--states') args.states = argv[++i].split(',').map(Number)
+    else if (argv[i] === '--viewport') args.only = argv[++i]
+    else if (argv[i] === '--quick') args.quick = true
   }
   return args
 }
@@ -146,7 +153,29 @@ async function runViewport(browser, viewport, states) {
       }
     }
 
+    if (args.quick) {
+      const active = info.cities.filter((c) => c.presence > 0.01 || c.landmarks.some((l) => l.opacity > 0.01))
+      console.log(
+        `    ${entry.label} p=${info.progress.toFixed(2)} ` +
+          `globe=${info.globeScreenRadius.toFixed(0)}/${info.viewportLimit.toFixed(0)} ` +
+          active
+            .map(
+              (c) =>
+                `${c.city}(${c.presence.toFixed(2)})[` +
+                c.landmarks.map((l) => `${l.id}:${l.opacity.toFixed(2)}/${l.layer}`).join(' ') +
+                ']',
+            )
+            .join(' '),
+      )
+    }
+
     await page.screenshot({ path: resolve(OUT, `${viewport.name}-${entry.label}.png`) })
+  }
+
+  if (args.quick) {
+    reportConsole(viewport, consoleIssues)
+    await context.close()
+    return
   }
 
   // --- City ownership at each boundary --------------------------------------
@@ -184,10 +213,14 @@ async function runViewport(browser, viewport, states) {
       for (const city of info.cities) {
         for (const landmark of city.landmarks) {
           const last = previous.get(landmark.id)
-          if (last && landmark.layer === 'front' && last.layer === 'front') {
-            if (Math.abs(landmark.opacity - last.opacity) > 0.02) violations += 1
+          // A change is only legitimate if the object was out of sight for it.
+          if (last && Math.abs(landmark.opacity - last.opacity) > 0.02) {
+            if (!landmark.occluded && !last.occluded) violations += 1
           }
-          previous.set(landmark.id, { opacity: landmark.opacity, layer: landmark.layer })
+          previous.set(landmark.id, {
+            opacity: landmark.opacity,
+            occluded: landmark.occluded,
+          })
         }
       }
     }
@@ -279,6 +312,10 @@ async function runViewport(browser, viewport, states) {
     await reducedContext.close()
   }
 
+  reportConsole(viewport, consoleIssues)
+}
+
+function reportConsole(viewport, consoleIssues) {
   if (consoleIssues.length > 0) {
     failures.push(
       `${viewport.name}px: ${consoleIssues.length} console issue(s):\n    ` +
@@ -287,6 +324,41 @@ async function runViewport(browser, viewport, states) {
   } else {
     notes.push(`${viewport.name}px: console clean`)
   }
+}
+
+/**
+ * Launch a real, GPU-backed browser.
+ *
+ * Headed, and on the locally installed Chrome by preference: Playwright's own
+ * Chromium build is downloaded from a CDN that is not reachable here, and a
+ * headless fallback would rasterise through SwiftShader — which would make the
+ * alpha-edge, additive-blending and colour judgements this harness exists to
+ * make completely meaningless.
+ */
+async function launchBrowser() {
+  const options = {
+    headless: false,
+    args: [
+      '--use-angle=d3d11',
+      '--enable-gpu-rasterization',
+      '--ignore-gpu-blocklist',
+      '--hide-scrollbars',
+    ],
+  }
+
+  const channels = ['chrome', 'msedge']
+  for (const channel of channels) {
+    try {
+      const browser = await chromium.launch({ ...options, channel })
+      console.log(`Using installed ${channel}.`)
+      return browser
+    } catch {
+      // Try the next one.
+    }
+  }
+
+  console.log('Falling back to the bundled Chromium.')
+  return chromium.launch(options)
 }
 
 const args = parseArgs(process.argv.slice(2))
@@ -307,21 +379,14 @@ async function main() {
     ? args.states.map((s) => ({ label: `s${s}`, state: s }))
     : CITY_STATES
 
-  // Real GPU. Headless Chromium would use SwiftShader and make the alpha and
-  // blending judgements meaningless.
-  const browser = await chromium.launch({
-    headless: false,
-    args: [
-      '--use-angle=d3d11',
-      '--enable-gpu-rasterization',
-      '--ignore-gpu-blocklist',
-      '--enable-unsafe-webgpu',
-      '--hide-scrollbars',
-    ],
-  })
+  const browser = await launchBrowser()
+
+  const targets = args.only
+    ? VIEWPORTS.filter((viewport) => viewport.name === args.only)
+    : VIEWPORTS
 
   try {
-    for (const viewport of VIEWPORTS) {
+    for (const viewport of targets) {
       console.log(`\n▸ ${viewport.name}px (${viewport.width}×${viewport.height})`)
       await runViewport(browser, viewport, states)
     }

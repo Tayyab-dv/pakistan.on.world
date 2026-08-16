@@ -409,7 +409,12 @@ export class World {
     cities: Array<{
       city: string
       presence: number
-      landmarks: ReadonlyArray<{ id: string; opacity: number; layer: string }>
+      landmarks: ReadonlyArray<{
+        id: string
+        opacity: number
+        layer: string
+        occluded: boolean
+      }>
     }>
   } {
     const distance = this.fitDistance * this.frame.camDist

@@ -12,17 +12,22 @@ import type { ArtLayer, LandmarkArt, LayerRole } from './types'
  */
 
 interface RoleStyle {
-  /** Blend toward the key light (1) or toward shadow (-1). */
+  /** Position between full shadow (0) and full sunlight (1). */
   readonly tone: number
   readonly opacity: number
 }
 
+/**
+ * Tonal separation is what makes a flat cutout read as a solid object. These
+ * values are spread deliberately wide — a mosque rendered across a narrow band
+ * of greys looks like a sticker no matter how good the silhouette is.
+ */
 const ROLE_STYLES: Record<LayerRole, RoleStyle> = {
-  silhouette: { tone: -0.12, opacity: 1 },
-  shade: { tone: -0.62, opacity: 1 },
-  detail: { tone: -0.86, opacity: 0.92 },
-  highlight: { tone: 0.72, opacity: 0.95 },
-  accent: { tone: 0.4, opacity: 0.9 },
+  silhouette: { tone: 0.52, opacity: 1 },
+  shade: { tone: 0.2, opacity: 1 },
+  detail: { tone: 0.05, opacity: 0.92 },
+  highlight: { tone: 0.95, opacity: 1 },
+  accent: { tone: 0.8, opacity: 0.95 },
 }
 
 function mix(a: RGB, b: RGB, t: number): [number, number, number] {
@@ -37,19 +42,22 @@ function css(c: readonly [number, number, number], alpha = 1): string {
 /**
  * Resolve a role to a colour in the city's palette.
  *
- * Stone is never pure: it is the city's ambient colour pushed toward the key
- * light or away from it. That is what keeps a landmark sitting in the same
- * light as the globe rather than looking pasted on.
+ * Two anchors are established first — masonry in full sun, and masonry in
+ * shadow — and every role is a point between them. The lit anchor is pulled
+ * toward the city's key light and the shadow anchor toward its ambient and fog,
+ * so a landmark is lit by the same sun as the globe behind it. Deriving the
+ * base from ambient alone, as an earlier version did, produced flat grey
+ * buildings under a sunrise.
  */
 function colourFor(role: LayerRole, theme: Theme): [number, number, number] {
   const style = ROLE_STYLES[role]
 
-  // A neutral masonry base, tinted by the city's ambient light.
-  const stone = mix(theme.ambient, [0.72, 0.69, 0.65], 0.62)
+  const masonry: [number, number, number] = [0.8, 0.76, 0.7]
+  const lit = mix(masonry, theme.key, 0.5)
+  const shadow = mix(mix(theme.fog, theme.ambient, 0.55), masonry, 0.14)
 
-  if (role === 'accent') return mix(stone, theme.accent, 0.85)
-  if (style.tone >= 0) return mix(stone, theme.key, style.tone)
-  return mix(stone, theme.fog, -style.tone)
+  if (role === 'accent') return mix(mix(shadow, lit, style.tone), theme.accent, 0.8)
+  return mix(shadow, lit, style.tone)
 }
 
 export interface LandmarkTexture {
@@ -152,9 +160,9 @@ function applyDirectionalLight(
   // A soft darkening toward the base seats the object rather than letting it
   // float — a gradient, not a cast shadow, so nothing is baked in that would
   // contradict the scene's own lighting.
-  const grounding = ctx.createLinearGradient(0, height * 0.55, 0, height)
+  const grounding = ctx.createLinearGradient(0, height * 0.62, 0, height)
   grounding.addColorStop(0, css(theme.fog, 0))
-  grounding.addColorStop(1, css(theme.fog, 0.4))
+  grounding.addColorStop(1, css(theme.fog, 0.24))
   ctx.fillStyle = grounding
   ctx.fillRect(0, 0, width, height)
   ctx.restore()

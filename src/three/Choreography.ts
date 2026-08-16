@@ -256,11 +256,17 @@ export class Choreography {
   }
 
   /** Landmark state, sampled by the verification harness. */
-  get landmarkStates(): ReadonlyArray<{ id: string; opacity: number; layer: string }> {
+  get landmarkStates(): ReadonlyArray<{
+    id: string
+    opacity: number
+    layer: string
+    occluded: boolean
+  }> {
     return this.landmarks.map((landmark) => ({
       id: landmark.config.art.id,
       opacity: landmark.currentOpacity,
       layer: landmark.layer,
+      occluded: landmark.occluded,
     }))
   }
 

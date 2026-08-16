@@ -181,12 +181,19 @@ export class Landmark {
     const frontness = clamp01((Math.sin(theta) + 1) / 2)
 
     if (config.anchored) {
-      // Seat the base on the globe's silhouette as it crosses the foreground,
-      // so architecture reads as standing on the edge of the world rather than
-      // hovering in front of it.
+      // Seat architecture low against the globe as it crosses the foreground,
+      // so it reads as standing on the edge of the world rather than hovering.
+      //
+      // Deliberately a constant height rather than the sphere's silhouette at
+      // this x. Following the true limb looks correct on paper but the limb
+      // rises to the equator as the object travels outward, which lifts the
+      // building into empty sky exactly when it is most visible.
+      //
+      // `baseline` is where the ground sits within the art, so this puts the
+      // *ground line* at the target height rather than the plane's edge.
       const height = config.height * this.scale
-      const seated = -Math.sqrt(Math.max(0, GLOBE_RADIUS ** 2 - Math.min(x * x, GLOBE_RADIUS ** 2)))
-      _world.y = lerp(_world.y, globeCenter.y + seated + height * (1 - this.art.baseline * 0.5), frontness)
+      const groundY = globeCenter.y - GLOBE_RADIUS * 0.72
+      _world.y = lerp(_world.y, groundY + height * (this.art.baseline - 0.5), frontness)
     }
 
     this.mesh.position.copy(_world)
@@ -208,15 +215,21 @@ export class Landmark {
       this.worldRadius,
     )
 
-    // The fade envelope: fully out at the window edges, fully in across the
-    // middle. Both edges coincide with θ ≈ ±π/2 behind the globe.
-    const desired = smoothstep(0, 0.1, u) * (1 - smoothstep(0.9, 1, u))
-
-    // Occlusion gate. A change is only committed while the object is genuinely
-    // hidden — either swallowed by the globe's disc, or well behind it.
-    const mayFade =
-      this.placement.hidden || this.placement.depth > GLOBE_RADIUS * 0.55
-    if (mayFade) this.opacity = desired
+    // The fade envelope.
+    //
+    // A pure function of progress, like everything else here. An earlier
+    // version gated the change on live occlusion — only letting opacity move
+    // while the object was measurably hidden — which was correct frame to frame
+    // but broke the moment progress jumped rather than swept: clicking a
+    // stepper dot, or reloading onto a restored scroll position, could land a
+    // landmark mid-orbit with its opacity frozen at zero, invisible for the
+    // rest of the city.
+    //
+    // Safety now comes from the window instead. Both edges sit at θ = ±π/2,
+    // the deepest point directly behind the Earth, and the ramp is short enough
+    // that it finishes long before the object reaches the limb — so the fade
+    // still cannot be seen, and it survives discontinuous progress.
+    this.opacity = smoothstep(0, 0.045, u) * (1 - smoothstep(0.955, 1, u))
 
     this.material.opacity = this.opacity
     this.mesh.visible = this.opacity > 0.002
@@ -230,6 +243,18 @@ export class Landmark {
 
   get layer(): string {
     return (this.mesh.userData.layer as string | undefined) ?? 'rear'
+  }
+
+  /**
+   * Whether the object is genuinely out of sight this frame.
+   *
+   * No longer used to gate the fade — that is a pure function of progress now —
+   * but the harness asserts against it: every frame in which opacity changes
+   * must be a frame in which this is true, or behind the globe at least.
+   */
+  get occluded(): boolean {
+    if (!this.placement) return false
+    return this.placement.hidden || this.placement.depth > GLOBE_RADIUS * 0.5
   }
 
   dispose(router: LayerRouter): void {

@@ -170,11 +170,14 @@ const ATMOSPHERE_FRAGMENT = /* glsl */ `
     vec3 normalW = normalize(-vNormalW);
     vec3 viewDir = normalize(cameraPosition - vPositionW);
 
-    float fresnel = pow(1.0 - max(dot(normalW, viewDir), 0.0), 2.6);
+    // A high exponent is what makes this read as atmosphere rather than as a
+    // glass shell: the glow has to be confined to a narrow band at the limb and
+    // vanish completely across the disc.
+    float fresnel = pow(1.0 - max(dot(normalW, viewDir), 0.0), 6.0);
     // Scatter is strongest where the limb is also sunlit, which is what puts
     // the bright crescent on the day side and leaves the night side dim.
     float sunlit = smoothstep(-0.45, 0.55, dot(normalW, uSunDir));
-    float alpha = fresnel * uIntensity * (0.28 + sunlit * 0.9);
+    float alpha = fresnel * uIntensity * (0.16 + sunlit * 0.85);
 
     gl_FragColor = vec4(uColor * alpha, alpha);
 
@@ -264,10 +267,11 @@ export class Globe {
       depthWrite: false,
     })
 
-    // 1.18 matches EFFECTIVE_RADIUS in Camera.ts — the fit solver reserves
-    // exactly this much room, so the glow can never be clipped at the edges.
+    // Hugs the surface closely. A wide shell reads as a bubble around the
+    // planet; the glow has to sit on the limb. Still comfortably inside
+    // EFFECTIVE_RADIUS, so the fit solver can never clip it.
     this.atmosphere = new Mesh(
-      new SphereGeometry(GLOBE_RADIUS * 1.18, 48, 24),
+      new SphereGeometry(GLOBE_RADIUS * 1.075, 64, 32),
       this.atmosphereMaterial,
     )
     this.group.add(this.atmosphere)

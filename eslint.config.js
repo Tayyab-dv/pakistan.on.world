@@ -35,14 +35,16 @@ export default tseslint.config(
     },
   },
 
-  // Build and verification scripts run under Node.
+  // Build and verification scripts run under Node — but the Playwright ones
+  // also contain `page.evaluate` callbacks whose bodies are serialised and run
+  // inside the browser, so both global sets are legitimate here.
   {
     extends: [js.configs.recommended],
     files: ['scripts/**/*.mjs'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
-      globals: globals.node,
+      globals: { ...globals.node, ...globals.browser },
     },
     rules: {
       'no-console': 'off',

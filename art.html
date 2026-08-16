@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Landmark art — contact sheet</title>
+    <link rel="icon" href="data:," />
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      body {
+        margin: 0;
+        padding: 24px;
+        background: #0a0f1a;
+        color: #f2ece2;
+        font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      h1 {
+        font-size: 14px;
+        font-weight: 400;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        opacity: 0.5;
+        margin: 0 0 20px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 20px;
+      }
+      figure {
+        margin: 0;
+      }
+      .frame {
+        /* A checker under the art makes any stray background, halo or
+           unintended fill immediately obvious. */
+        background:
+          linear-gradient(45deg, #1b2230 25%, transparent 25%, transparent 75%, #1b2230 75%),
+          linear-gradient(45deg, #1b2230 25%, #131a26 25%, #131a26 75%, #1b2230 75%);
+        background-size: 16px 16px;
+        background-position: 0 0, 8px 8px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        padding: 8px;
+        border: 1px solid #222c3c;
+      }
+      canvas {
+        max-width: 100%;
+        height: auto;
+      }
+      figcaption {
+        margin-top: 8px;
+        opacity: 0.62;
+      }
+      .bad {
+        color: #ff8f6b;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Landmark art — contact sheet</h1>
+    <div class="grid" id="grid"></div>
+    <script type="module" src="/src/art-preview.ts"></script>
+  </body>
+</html>

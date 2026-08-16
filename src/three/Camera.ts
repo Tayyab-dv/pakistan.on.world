@@ -23,8 +23,15 @@ export const EFFECTIVE_RADIUS = GLOBE_RADIUS * 1.18
 
 export const FOV = 32
 
-/** Extra breathing room beyond a perfect fit. */
-const MARGIN = 1.12
+/**
+ * Extra breathing room beyond a perfect fit.
+ *
+ * A bare fit puts the atmosphere hard against the viewport edge on a 16:9
+ * desktop, leaving the copy and the solar stepper sitting on top of the globe
+ * with nothing between them. This backs the camera off so the composition has
+ * air around the hero.
+ */
+const MARGIN = 1.3
 
 export const NEAR = 0.1
 export const FAR = 100
