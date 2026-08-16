@@ -1,0 +1,154 @@
+@import './reset.css';
+@import './type.css';
+@import './interface.css';
+
+/* ---------------------------------------------------------------------------
+   Theme tokens.
+
+   These defaults exist only so the first paint (before JS boots) is not white.
+   From then on `cities/themes.ts` writes the *same* lerped values here that it
+   feeds to the Three.js scene, so the DOM and the 3D can never drift apart.
+   --------------------------------------------------------------------------- */
+
+:root {
+  --ink: #f2ece2;
+  --ink-dim: rgb(242 236 226 / 0.52);
+  --accent: #e3b877;
+  --fog: #0a0e16;
+  --atmo: #9fd0ff;
+
+  /* Set by core/scroll.ts from TRACK_VH. */
+  --track-h: 1200vh;
+
+  /* Reserved space at the bottom for the solar stepper, so the editorial copy
+     never lands on top of it at any width. */
+  --solar-h: 150px;
+  --gutter: clamp(1.25rem, 4vw, 4.5rem);
+}
+
+@media (max-width: 767px) {
+  :root {
+    --solar-h: 118px;
+  }
+}
+
+html,
+body {
+  background: var(--fog);
+  color: var(--ink);
+  font-family: var(--font-editorial);
+}
+
+/* ---------------------------------------------------------------------------
+   Stage — the pinned composition. Everything visual lives here; it never moves.
+   --------------------------------------------------------------------------- */
+
+.stage {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  /* The stage must not eat scroll gestures; individual children opt back in. */
+  pointer-events: none;
+}
+
+.stage__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Rear layer: the globe, its atmosphere, orbital guide lines, and any motif
+   currently behind the Earth. */
+.stage__canvas--rear {
+  z-index: 1;
+}
+
+/* Front layer: motifs and landmarks that have cleared the globe's silhouette.
+   Transparent, composited over the rear canvas. */
+.stage__canvas--front {
+  z-index: 2;
+}
+
+/* Pointer target for globe drag and marker picking. Sits above both canvases
+   but below the interface. */
+.stage__picker {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: auto;
+  /* Vertical panning always belongs to the page; horizontal drag is claimed
+     imperatively by the axis-intent handler in three/Globe.ts. */
+  touch-action: pan-y;
+}
+
+/* ---------------------------------------------------------------------------
+   Scroll track — the only thing in normal flow. Its height is the journey.
+   --------------------------------------------------------------------------- */
+
+.scroll-track {
+  position: relative;
+  z-index: 0;
+  width: 100%;
+  height: var(--track-h);
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Grain and atmospheric vignette. No panels, no cards — just light.
+   --------------------------------------------------------------------------- */
+
+.grain {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  opacity: var(--grain-opacity, 0.055);
+  mix-blend-mode: overlay;
+}
+
+.vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 78% 68% at 50% 46%,
+    transparent 42%,
+    color-mix(in srgb, var(--fog) 88%, transparent) 100%
+  );
+}
+
+/* ---------------------------------------------------------------------------
+   Accessibility helpers.
+   --------------------------------------------------------------------------- */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+:focus-visible {
+  outline: 1.5px solid var(--accent);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

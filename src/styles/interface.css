@@ -1,0 +1,302 @@
+/* ---------------------------------------------------------------------------
+   Editorial copy — lower left.
+
+   All six blocks are stacked at the same origin and anchored by their bottom
+   edge, so a longer sentence grows upward and the baseline never moves between
+   cities.
+   --------------------------------------------------------------------------- */
+
+.city-copy {
+  position: absolute;
+  z-index: 5;
+  left: var(--gutter);
+  bottom: calc(var(--solar-h) + clamp(1.5rem, 4vh, 3.5rem));
+  width: min(42ch, 58vw);
+  pointer-events: none;
+}
+
+.city-copy__block {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  will-change: opacity, transform;
+}
+
+.city-copy__name {
+  font-size: var(--size-city);
+  font-weight: 300;
+  line-height: 1.02;
+  letter-spacing: var(--track-city);
+  color: var(--ink);
+  text-wrap: balance;
+}
+
+.city-copy__line {
+  margin-top: 0.55em;
+  font-size: var(--size-copy);
+  font-weight: 300;
+  line-height: 1.45;
+  color: var(--ink-dim);
+  text-wrap: pretty;
+}
+
+@media (max-width: 767px) {
+  .city-copy {
+    width: calc(100% - var(--gutter) * 2);
+    bottom: calc(var(--solar-h) + 1.1rem);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Solar course stepper.
+
+   The arc SVG stretches to the viewport (preserveAspectRatio="none"); the dots
+   and labels are HTML positioned in percentage terms so circles stay circular
+   and the type stays selectable, translatable, real text.
+   --------------------------------------------------------------------------- */
+
+.solar {
+  position: absolute;
+  z-index: 5;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--solar-h);
+  pointer-events: none;
+}
+
+.solar__arc {
+  position: absolute;
+  inset: 0 0 14px 0;
+}
+
+.solar__svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.solar__track {
+  fill: none;
+  stroke: var(--ink);
+  stroke-opacity: 0.13;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.solar__travelled {
+  fill: none;
+  stroke: var(--accent);
+  stroke-opacity: 0.72;
+  stroke-width: 1.4;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--accent) 60%, transparent));
+}
+
+/* --- Fixed glyphs: sunrise, zenith, sunset ------------------------------- */
+
+.solar__glyph {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  line-height: 0;
+}
+
+.solar__glyph svg {
+  overflow: visible;
+}
+
+.solar__glyph--rise svg,
+.solar__glyph--set svg {
+  width: 26px;
+  height: 26px;
+}
+
+.solar__glyph--zenith svg {
+  width: 40px;
+  height: 40px;
+}
+
+.solar__glyph-body {
+  fill: var(--accent);
+  fill-opacity: 0.3;
+}
+
+.solar__glyph--zenith .solar__glyph-body {
+  fill-opacity: 0.5;
+}
+
+.solar__glyph-horizon,
+.solar__glyph-ray {
+  stroke: var(--accent);
+  stroke-opacity: 0.42;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: round;
+}
+
+/* --- The travelling sun --------------------------------------------------- */
+
+.solar__sun {
+  position: absolute;
+  width: 13px;
+  height: 13px;
+  margin: -6.5px 0 0 -6.5px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: var(--accent);
+  box-shadow:
+    0 0 8px 1px color-mix(in srgb, var(--accent) 75%, transparent),
+    0 0 22px 5px color-mix(in srgb, var(--accent) 32%, transparent);
+  will-change: left, top;
+}
+
+/* --- City dots and labels ------------------------------------------------- */
+
+.solar__dots {
+  position: absolute;
+  inset: 0;
+}
+
+.solar__dot {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: clamp(46px, 11%, 132px);
+  transform: translateX(-50%);
+  pointer-events: auto;
+  /* The label is allowed to exceed the strip; the strip is only a hit target. */
+  overflow: visible;
+}
+
+.solar__mark {
+  position: absolute;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px 0 0 -3.5px;
+  border-radius: 50%;
+  background: var(--ink);
+  opacity: 0.34;
+  transition: opacity 240ms ease, box-shadow 240ms ease, transform 240ms ease;
+}
+
+.solar__dot[data-active='true'] .solar__mark {
+  opacity: 1;
+  background: var(--accent);
+  transform: scale(1.15);
+  box-shadow: 0 0 10px 2px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.solar__dot:hover .solar__mark {
+  opacity: 0.8;
+}
+
+.solar__label {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.solar__dot[data-align='start'] .solar__label {
+  left: 0;
+  transform: none;
+  text-align: left;
+}
+
+.solar__dot[data-align='end'] .solar__label {
+  left: auto;
+  right: 0;
+  transform: none;
+  text-align: right;
+}
+
+.solar__name {
+  display: block;
+  font-size: var(--size-stepper);
+  font-weight: 400;
+  letter-spacing: var(--track-stepper);
+  text-transform: uppercase;
+  color: var(--ink);
+  opacity: 0.46;
+  transition: opacity 240ms ease;
+}
+
+.solar__dot[data-active='true'] .solar__name,
+.solar__dot:hover .solar__name {
+  opacity: 1;
+}
+
+.solar__season {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  margin-bottom: 0.35em;
+  font-size: var(--size-stepper);
+  font-style: italic;
+  font-weight: 300;
+  letter-spacing: 0.05em;
+  text-transform: none;
+  color: var(--accent);
+  opacity: 0;
+  transition: opacity 200ms ease;
+  pointer-events: none;
+}
+
+.solar__dot:hover .solar__season,
+.solar__dot:focus-visible .solar__season {
+  opacity: 0.9;
+}
+
+/* On touch there is no hover, so the active city keeps its season visible. */
+@media (pointer: coarse) {
+  .solar__dot[data-active='true'] .solar__season {
+    opacity: 0.85;
+  }
+}
+
+/* --- Journey progress line ------------------------------------------------ */
+
+.solar__progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
+  overflow: hidden;
+}
+
+.solar__progress-fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+  will-change: transform;
+}
+
+@media (max-width: 767px) {
+  .solar__dot {
+    width: clamp(44px, 15%, 70px);
+  }
+
+  .solar__glyph--zenith svg {
+    width: 30px;
+    height: 30px;
+  }
+
+  .solar__glyph--rise svg,
+  .solar__glyph--set svg {
+    width: 20px;
+    height: 20px;
+  }
+}

@@ -1,0 +1,15 @@
+node_modules
+dist
+dist-ssr
+.vite
+*.local
+.DS_Store
+Thumbs.db
+
+# Visual-check output
+.visual/
+
+# Downloaded raster source imagery (regenerate with `npm run textures`)
+public/textures/earth/_source/
+
+*.tsbuildinfo
