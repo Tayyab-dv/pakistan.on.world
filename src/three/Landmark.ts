@@ -137,13 +137,32 @@ export class Landmark {
    *
    * @param halfWidth Visible half-width in world units at the globe's depth.
    */
-  fitViewport(halfWidth: number): void {
+  /**
+   * Fit the orbit and the object to the viewport.
+   *
+   * The size constraint is deliberately "fits in frame at its *focal* moment",
+   * not "never crosses the frame edge anywhere on the orbit". At focus the
+   * object is centred, so that is the moment it has to be whole and legible;
+   * at the lateral extremes it is at the limb, mid-transition, and letting it
+   * run past the edge there costs nothing. Enforcing the stricter rule shrank
+   * a wide building like Badshahi Mosque to near-invisibility on a portrait
+   * tablet, which is a far worse outcome than a clipped edge in passing.
+   */
+  fitViewport(halfWidth: number, halfHeight: number): void {
     // Below about 1.9 there is no lateral room to speak of, so scale down.
     this.scale = clamp(halfWidth / 1.9, 0.5, 1)
 
+    // Shrink further only if the object would not fit on screen at focus.
+    const fitW = (halfWidth * 0.95) / Math.max(0.001, this.worldRadius)
+    const fitH = (halfHeight * 0.95) / Math.max(0.001, (this.config.height * this.scale) / 2)
+    const fit = Math.min(fitW, fitH)
+    if (fit < 1) this.scale *= fit
+
     const objectHalfWidth = this.worldRadius
     const minimum = GLOBE_RADIUS + objectHalfWidth * 0.85
-    const maximum = Math.max(minimum, halfWidth * 0.94 - objectHalfWidth)
+    // 1.15 lets the orbit carry the object a little past the frame edge at the
+    // limbs, where it is travelling rather than being looked at.
+    const maximum = Math.max(minimum, halfWidth * 1.15 - objectHalfWidth)
 
     this.radius = clamp(this.config.orbitRadius * this.scale, minimum, maximum)
   }

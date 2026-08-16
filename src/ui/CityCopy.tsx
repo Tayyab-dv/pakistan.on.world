@@ -13,22 +13,42 @@ import { scrollEngine } from '../core/scroll'
  * directions. Six short text nodes cost nothing to keep mounted.
  */
 
-/** Half-width of the crossfade window, in scroll states. */
-const FADE = 0.7
+/**
+ * Length of each fade, in scroll states.
+ *
+ * Short, because the two fades run back to back rather than overlapping: a
+ * long fade would leave the sentence faint for the last fifth of every city
+ * and open too wide a gap at the boundary. At 0.45 the text holds at full
+ * strength for most of a city and the handover takes well under a second.
+ */
+const FADE = 0.45
 /** Vertical travel of the fade, in pixels. */
 const RISE = 14
 
+/**
+ * The two fades are sequential, not overlapping.
+ *
+ * The outgoing sentence reaches zero exactly at the city boundary and the
+ * incoming one starts from there, so there is a short beat with no text rather
+ * than a moment where both are half-legible. A true crossfade looks fine on
+ * abstract shapes and terrible on type — two paragraphs at 50% read as a
+ * rendering fault, not as a transition.
+ */
+function appearingAt(distanceIntoCity: number): number {
+  return smoothstep(0, FADE, distanceIntoCity)
+}
+
+function leavingAt(distanceIntoCity: number): number {
+  return smoothstep(STATES_PER_CITY - FADE, STATES_PER_CITY, distanceIntoCity)
+}
+
 function opacityFor(distanceIntoCity: number): number {
-  const appearing = smoothstep(-FADE, FADE, distanceIntoCity)
-  const leaving = smoothstep(STATES_PER_CITY - FADE, STATES_PER_CITY + FADE, distanceIntoCity)
-  return appearing * (1 - leaving)
+  return appearingAt(distanceIntoCity) * (1 - leavingAt(distanceIntoCity))
 }
 
 function offsetFor(distanceIntoCity: number): number {
-  const appearing = smoothstep(-FADE, FADE, distanceIntoCity)
-  const leaving = smoothstep(STATES_PER_CITY - FADE, STATES_PER_CITY + FADE, distanceIntoCity)
   // Rises into place from below, then continues upward on the way out.
-  return RISE * (1 - appearing) - RISE * leaving
+  return RISE * (1 - appearingAt(distanceIntoCity)) - RISE * leavingAt(distanceIntoCity)
 }
 
 export function CityCopy() {

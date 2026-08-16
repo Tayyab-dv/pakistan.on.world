@@ -356,6 +356,21 @@ export class Globe {
     return this.sunDir
   }
 
+  /**
+   * Current orientation and the size of the user's outstanding drag.
+   *
+   * The harness uses `dragOffset` to check both halves of the drag contract:
+   * that a drag actually turns the globe, and that the offset then decays back
+   * to zero so scroll regains control before the next city.
+   */
+  get orientation(): { x: number; y: number; dragOffset: number } {
+    return {
+      x: this.currentX,
+      y: this.currentY,
+      dragOffset: Math.hypot(this.offsetX, this.offsetY),
+    }
+  }
+
   /** The Earth mesh, for raycasting against the sphere. */
   get surface(): Mesh {
     return this.earth

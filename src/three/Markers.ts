@@ -8,6 +8,7 @@ import {
   Mesh,
   MeshBasicMaterial,
   Object3D,
+  type PerspectiveCamera,
   Quaternion,
   Raycaster,
   RingGeometry,
@@ -157,6 +158,31 @@ export class Markers {
       // Fully transparent markers still cost a draw call; skip them.
       marker.root.visible = visibility > 0.002
     }
+  }
+
+  /**
+   * Screen positions of every marker, for the verification harness.
+   *
+   * The brief requires that clicking each globe marker lands inside its own
+   * city, which cannot be tested without knowing where on screen they are.
+   * `visible` reports whether the marker is on the near side; clicking one that
+   * is not is correctly a no-op.
+   */
+  screenPositions(
+    camera: PerspectiveCamera,
+    width: number,
+    height: number,
+  ): Array<{ index: number; x: number; y: number; visible: boolean }> {
+    return this.markers.map((marker) => {
+      marker.root.getWorldPosition(_p)
+      _p.project(camera)
+      return {
+        index: marker.index,
+        x: ((_p.x + 1) / 2) * width,
+        y: ((1 - _p.y) / 2) * height,
+        visible: marker.root.visible,
+      }
+    })
   }
 
   /**

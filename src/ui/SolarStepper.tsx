@@ -71,8 +71,17 @@ function labelAlign(index: number): 'start' | 'center' | 'end' {
 export function SolarStepper() {
   const [activeCity, setActiveCity] = useState(0)
   /** Roving tabindex: which dot Tab lands on. Follows the active city unless
-   *  the user has moved focus with the arrow keys. */
+   *  the user currently has focus inside the widget. */
   const [focusedCity, setFocusedCity] = useState(0)
+  /**
+   * Mirror of `focusedCity` for the key handler.
+   *
+   * Arrow keys can arrive faster than React re-renders, and reading the state
+   * variable through the callback's closure means a quick double-press
+   * computes both steps from the same stale index and moves one place instead
+   * of two.
+   */
+  const focusedRef = useRef(0)
 
   const sunRef = useRef<HTMLDivElement | null>(null)
   const travelledRef = useRef<SVGPathElement | null>(null)
@@ -109,31 +118,45 @@ export function SolarStepper() {
     })
   }, [])
 
-  // Keep the tab stop on the active city, unless the user is currently driving
-  // focus themselves.
+  // Keep the tab stop on the active city, so tabbing in lands on wherever the
+  // journey currently is — unless the user already has focus inside the widget,
+  // in which case moving it out from under them would be hostile.
   useEffect(() => {
     const root = rootRef.current
     const focusIsInside = root?.contains(document.activeElement) ?? false
-    if (!focusIsInside) setFocusedCity(activeCity)
+    if (!focusIsInside) {
+      focusedRef.current = activeCity
+      setFocusedCity(activeCity)
+    }
   }, [activeCity])
 
-  const goTo = useCallback((index: number) => {
+  const moveFocus = useCallback((index: number) => {
     const clamped = clamp(index, 0, CITIES.length - 1)
+    focusedRef.current = clamped
     setFocusedCity(clamped)
-    scrollEngine.scrollToCity(clamped)
+    return clamped
   }, [])
+
+  const goTo = useCallback(
+    (index: number) => {
+      scrollEngine.scrollToCity(moveFocus(index))
+    },
+    [moveFocus],
+  )
 
   const onKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
-      let next = focusedCity
+      const current = focusedRef.current
+      let next = current
+
       switch (event.key) {
         case 'ArrowLeft':
         case 'ArrowUp':
-          next = focusedCity - 1
+          next = current - 1
           break
         case 'ArrowRight':
         case 'ArrowDown':
-          next = focusedCity + 1
+          next = current + 1
           break
         case 'Home':
           next = 0
@@ -146,11 +169,9 @@ export function SolarStepper() {
       }
 
       event.preventDefault()
-      const clamped = clamp(next, 0, CITIES.length - 1)
-      setFocusedCity(clamped)
-      dotRefs.current[clamped]?.focus()
+      dotRefs.current[moveFocus(next)]?.focus()
     },
-    [focusedCity],
+    [moveFocus],
   )
 
   return (

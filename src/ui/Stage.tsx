@@ -56,8 +56,8 @@ export function Stage() {
       })
       .then(() => {
         if (cancelled) return
-        unsubscribe = scrollEngine.subscribe(({ progress, dt, reduced }) => {
-          world.setProgress(progress, dt, reduced)
+        unsubscribe = scrollEngine.subscribe(({ progress, targetProgress, dt, reduced }) => {
+          world.setProgress(progress, dt, reduced, targetProgress)
         })
       })
 

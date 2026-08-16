@@ -42,8 +42,20 @@ interface BuiltMotif {
   readonly facets?: Facets
 }
 
-/** How far either side of a city boundary the motifs cross-fade, in states. */
-const HANDOVER = 0.5
+/**
+ * How far either side of a city boundary the motifs cross-fade, in states.
+ *
+ * The brief asks that only the active city's procedural root render at any
+ * time, and also that transitions never snap. Those pull against each other, so
+ * the overlap is kept short — about 12vh of scroll, a fraction of a second at
+ * normal pace — rather than eliminated. A hard cut satisfies the first rule by
+ * plainly violating the second, and reads as a glitch against a globe that is
+ * moving smoothly through the same moment.
+ *
+ * Landmarks are not covered by this: they are held to the stricter rule and
+ * must be behind the Earth before the next city begins.
+ */
+const HANDOVER = 0.3
 
 export class Choreography {
   readonly root = new Group()
@@ -340,8 +352,8 @@ export class Choreography {
     }
   }
 
-  fitViewport(halfWidth: number): void {
-    for (const landmark of this.landmarks) landmark.fitViewport(halfWidth)
+  fitViewport(halfWidth: number, halfHeight: number): void {
+    for (const landmark of this.landmarks) landmark.fitViewport(halfWidth, halfHeight)
   }
 
   setPixelRatio(ratio: number): void {

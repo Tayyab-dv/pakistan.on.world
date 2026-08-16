@@ -71,6 +71,11 @@ export function visibleHalfWidth(distance: number, aspect: number): number {
   return Math.tan(hFov / 2) * distance
 }
 
+/** Half the visible world height at a given depth. */
+export function visibleHalfHeight(distance: number): number {
+  return Math.tan((FOV * DEG2RAD) / 2) * distance
+}
+
 /**
  * Projected on-screen radius of the globe, in pixels.
  *

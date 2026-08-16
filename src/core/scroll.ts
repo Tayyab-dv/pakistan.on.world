@@ -39,7 +39,14 @@ type FrameListener = (frame: Frame) => void
 
 interface Jump {
   fromY: number
-  toY: number
+  /**
+   * Stored as a progress value, not a pixel offset.
+   *
+   * The mapping from progress to scrollY depends on `maxScroll`, which changes
+   * whenever the viewport does. Holding pixels means a resize mid-flight aims
+   * the tween at a stale target; holding the state means it simply re-derives.
+   */
+  toState: number
   elapsed: number
 }
 
@@ -122,15 +129,15 @@ class ScrollEngine {
    * city, which is the defect the brief names explicitly.
    */
   scrollToCity(cityIndex: number): void {
-    const y = this.scrollYForProgress(landingStateFor(cityIndex))
+    const state = landingStateFor(cityIndex)
 
     if (this.reduced) {
       this.cancelJump()
-      window.scrollTo(0, y)
+      window.scrollTo(0, this.scrollYForProgress(state))
       return
     }
 
-    this.jump = { fromY: window.scrollY, toY: y, elapsed: 0 }
+    this.jump = { fromY: window.scrollY, toState: state, elapsed: 0 }
   }
 
   /**
@@ -154,9 +161,13 @@ class ScrollEngine {
   private measure(): void {
     const doc = document.documentElement
     this.maxScroll = Math.max(1, doc.scrollHeight - window.innerHeight)
-    // A resize changes the mapping from pixels to progress, so a jump in flight
-    // would be aiming at a stale pixel target.
-    this.cancelJump()
+
+    // A jump in flight is deliberately *not* cancelled here. Browsers fire
+    // resize and visualViewport events for incidental reasons — scrollbar
+    // changes, a mobile URL bar retracting — and cancelling on those left a
+    // long jump stranded partway, which is how a click on the last city
+    // stopped short of it. The jump stores a state rather than a pixel offset,
+    // so the new measurement is picked up on the next frame automatically.
   }
 
   private readTargetProgress(): number {
@@ -176,8 +187,10 @@ class ScrollEngine {
     if (this.jump) {
       this.jump.elapsed += dt
       const t = clamp(this.jump.elapsed / JUMP_DURATION, 0, 1)
-      const y = this.jump.fromY + (this.jump.toY - this.jump.fromY) * easeInOutCubic(t)
-      window.scrollTo(0, y)
+      // Re-derived every frame from the current measurement, so a resize
+      // mid-flight retargets rather than derailing the jump.
+      const toY = this.scrollYForProgress(this.jump.toState)
+      window.scrollTo(0, this.jump.fromY + (toY - this.jump.fromY) * easeInOutCubic(t))
       if (t >= 1) this.jump = null
     }
 

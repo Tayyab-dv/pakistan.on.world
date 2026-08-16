@@ -28,6 +28,7 @@ import {
   createCamera,
   projectedGlobeRadius,
   solveFitDistance,
+  visibleHalfHeight,
   visibleHalfWidth,
 } from './Camera'
 import { Choreography } from './Choreography'
@@ -91,6 +92,8 @@ export class World {
 
   /** Latest rendered progress, exposed for the verification harness. */
   progress = 0
+  /** Undamped progress implied by the scroll offset. */
+  private targetProgress = 0
 
   get isReady(): boolean {
     return this.ready
@@ -156,8 +159,18 @@ export class World {
 
     this.tierMonitor.onChange((profile) => {
       this.profile = profile
-      this.rendererRear?.setPixelRatio(Math.min(pixelRatioCap(), 1.5))
-      this.rendererFront?.setPixelRatio(Math.min(pixelRatioCap(), 1.5))
+
+      // Drop resolution first: it is the single biggest lever and it costs
+      // nothing to apply. Geometry and textures are deliberately left alone —
+      // rebuilding them mid-scroll would cause exactly the hitch the downgrade
+      // is trying to avoid.
+      const ratio = Math.min(pixelRatioCap(), profile.tier === 'low' ? 1 : 1.5)
+      this.rendererRear?.setPixelRatio(ratio)
+      this.rendererFront?.setPixelRatio(ratio)
+
+      // Point sizes are specified in pixels, so every particle and node
+      // material needs the new ratio or the fields change apparent size.
+      for (const choreography of this.choreographies) choreography.setPixelRatio(ratio)
     })
 
     this.ready = true
@@ -305,7 +318,10 @@ export class World {
     // Landmark orbits are world-space, but how much of that world is visible
     // is not — refit them whenever the framing changes.
     const halfWidth = visibleHalfWidth(this.fitDistance, aspect)
-    for (const choreography of this.choreographies) choreography.fitViewport(halfWidth)
+    const halfHeight = visibleHalfHeight(this.fitDistance)
+    for (const choreography of this.choreographies) {
+      choreography.fitViewport(halfWidth, halfHeight)
+    }
   }
 
   /**
@@ -315,10 +331,11 @@ export class World {
    * is what makes reverse scrolling retrace the identical path rather than play
    * a separate animation.
    */
-  setProgress(progress: number, dt: number, reduced: boolean): void {
+  setProgress(progress: number, dt: number, reduced: boolean, target = progress): void {
     if (!this.ready || !this.camera || !this.globe || !this.markers) return
 
     this.progress = progress
+    this.targetProgress = target
     this.tierMonitor.sample(dt)
 
     sampleKeyframe(this.frame, progress)
@@ -400,12 +417,19 @@ export class World {
    * landmark is still in the open at a boundary.
    */
   inspect(): {
+    /** Damped, rendered progress. Trails `targetProgress` while settling. */
     progress: number
+    /** Progress implied by the current scroll offset. Exact, never damped. */
+    targetProgress: number
     tier: string
     /** On-screen radius of the globe including its atmosphere, in CSS pixels. */
     globeScreenRadius: number
     /** Half the smaller viewport dimension. The globe must not exceed it. */
     viewportLimit: number
+    /** Where each city marker is on screen, for click verification. */
+    markers: Array<{ index: number; x: number; y: number; visible: boolean }>
+    /** Globe orientation and outstanding user drag. */
+    globe: { x: number; y: number; dragOffset: number }
     cities: Array<{
       city: string
       presence: number
@@ -422,9 +446,15 @@ export class World {
 
     return {
       progress: this.progress,
+      targetProgress: this.targetProgress,
       tier: this.profile.tier,
       globeScreenRadius: projectedGlobeRadius(distance, height, EFFECTIVE_RADIUS),
       viewportLimit: Math.min(window.innerWidth, height) / 2,
+      markers:
+        this.camera && this.markers
+          ? this.markers.screenPositions(this.camera, window.innerWidth, height)
+          : [],
+      globe: this.globe?.orientation ?? { x: 0, y: 0, dragOffset: 0 },
       cities: this.choreographies.map((choreography) => ({
         city: choreography.city.id,
         presence: choreography.presence(this.progress),

@@ -287,9 +287,38 @@
   will-change: transform;
 }
 
+/* ---------------------------------------------------------------------------
+   Narrow viewports.
+
+   Six city names across 390px is the tightest constraint in the whole layout,
+   and the brief requires all of them stay readable — abbreviating or hiding
+   any is not an option. Three things make it fit:
+
+     1. The arc is inset from the viewport edges, so the first and last dots
+        are not hard against them and their labels have somewhere to sit.
+     2. Type gets smaller and much tighter, since the tracking that reads as
+        editorial at 1440 is pure waste at 390.
+     3. Alternate labels drop to a second baseline, which halves the number of
+        names competing for any given horizontal band.
+   --------------------------------------------------------------------------- */
+
 @media (max-width: 767px) {
+  :root {
+    --size-stepper: 0.58rem;
+    --track-stepper: 0.04em;
+  }
+
+  .solar__arc {
+    inset: 0 14px 14px 14px;
+  }
+
   .solar__dot {
-    width: clamp(44px, 15%, 70px);
+    width: clamp(40px, 15%, 70px);
+  }
+
+  /* Second baseline for every other city. */
+  .solar__dot:nth-child(2n) .solar__label {
+    bottom: 1.5em;
   }
 
   .solar__glyph--zenith svg {
@@ -301,5 +330,13 @@
   .solar__glyph--set svg {
     width: 20px;
     height: 20px;
+  }
+}
+
+/* Below ~360px even the staggered pair collide, so tighten once more. */
+@media (max-width: 400px) {
+  :root {
+    --size-stepper: 0.54rem;
+    --track-stepper: 0.02em;
   }
 }
