@@ -3,7 +3,7 @@
 An immersive, scroll-driven editorial piece: one persistent Earth carries you
 through six Pakistani cities across a single day and a single year.
 
-**Live:** https://tayyab-dv.github.io/-pakistan-on-a-turning-world/
+**Live:** https://tayyab-dv.github.io/pakistan.on.world/
 
 Islamabad at sunrise, Karachi in rising daylight, Lahore at the solar zenith,
 Peshawar in winter light, Gwadar at a deep-winter sunset, and Skardu under the
