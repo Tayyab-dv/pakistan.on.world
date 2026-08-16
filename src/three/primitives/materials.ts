@@ -112,7 +112,7 @@ const LINE_FRAGMENT = /* glsl */ `
   varying float vRun;
 
   void main() {
-    // Visible behind the head, fading out over `uSoftness`.
+    // Visible behind the head, fading out over uSoftness.
     float visible = smoothstep(uHead, uHead - uSoftness, vRun);
     // Taper both ends so a line never terminates in a hard stub.
     visible *= smoothstep(0.0, 0.08, vRun) * smoothstep(1.0, 0.9, vRun);

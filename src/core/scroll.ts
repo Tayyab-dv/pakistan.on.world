@@ -133,6 +133,20 @@ class ScrollEngine {
     this.jump = { fromY: window.scrollY, toY: y, elapsed: 0 }
   }
 
+  /**
+   * Jump straight to a progress value with no easing and no damping.
+   *
+   * Used by the verification harness, which needs a state to be exactly the
+   * state it asked for rather than a damped approach to it.
+   */
+  snapToState(state: number): void {
+    this.cancelJump()
+    const y = this.scrollYForProgress(state)
+    window.scrollTo(0, y)
+    this.targetProgress = this.readTargetProgress()
+    this.currentProgress = this.targetProgress
+  }
+
   private cancelJump(): void {
     this.jump = null
   }

@@ -149,11 +149,14 @@ export class Landmark {
     const u = invLerp(config.entry, config.exit, progress)
 
     if (progress <= config.entry || progress >= config.exit) {
-      if (this.mesh.visible) {
+      // Detach on leaving the window, not merely on becoming invisible: an
+      // invisible mesh left parented to a scene still participates in every
+      // subsequent traversal and sort.
+      if (this.mesh.parent !== null) {
         this.mesh.visible = false
-        router.remove(this.mesh)
         this.opacity = 0
         this.material.opacity = 0
+        router.remove(this.mesh)
       }
       return false
     }

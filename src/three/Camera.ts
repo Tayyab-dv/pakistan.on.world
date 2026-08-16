@@ -51,6 +51,20 @@ export function createCamera(aspect: number): PerspectiveCamera {
 }
 
 /**
+ * Half the visible world width at a given depth.
+ *
+ * The orbit solver needs this: a portrait phone frames the globe on its
+ * *horizontal* field of view and leaves almost no room either side, so a
+ * landmark on a world-space orbit that looks generous on a desktop would swing
+ * clean off the screen there.
+ */
+export function visibleHalfWidth(distance: number, aspect: number): number {
+  const vFov = FOV * DEG2RAD
+  const hFov = 2 * Math.atan(Math.tan(vFov / 2) * Math.max(aspect, 0.0001))
+  return Math.tan(hFov / 2) * distance
+}
+
+/**
  * Projected on-screen radius of the globe, in pixels.
  *
  * Used by the orbit solver to guarantee a landmark clears the Earth's

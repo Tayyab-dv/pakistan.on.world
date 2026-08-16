@@ -4,6 +4,7 @@ import {
   PerspectiveCamera,
   SRGBColorSpace,
   Scene,
+  Vector3,
   WebGLRenderer,
 } from 'three'
 import {
@@ -13,6 +14,7 @@ import {
   cityAt,
   cityIndexForProgress,
 } from '../cities'
+import { CHOREOGRAPHIES } from '../cities/choreographies'
 import { KEYFRAMES, createWorkingKeyframe, sampleKeyframe } from '../cities/keyframes'
 import type { Keyframe } from '../cities/keyframes'
 import { THEMES, applyThemeToCSS, createWorkingTheme, lerpTheme } from '../cities/themes'
@@ -21,9 +23,18 @@ import { clamp, smootherstep } from '../core/damp'
 import { LAMBDA, globeLambda, themeLambda } from '../core/motion-pref'
 import { TierMonitor, pixelRatioCap } from '../core/tier'
 import type { TierProfile } from '../core/tier'
-import { createCamera, solveFitDistance } from './Camera'
+import {
+  EFFECTIVE_RADIUS,
+  createCamera,
+  projectedGlobeRadius,
+  solveFitDistance,
+  visibleHalfWidth,
+} from './Camera'
+import { Choreography } from './Choreography'
 import { Globe } from './Globe'
+import { LayerRouter } from './LayerRouter'
 import { Markers } from './Markers'
+import { OrbitalLines } from './OrbitalLines'
 import { loadEarthTextures } from './textures'
 
 /**
@@ -59,6 +70,11 @@ export class World {
 
   private globe: Globe | null = null
   private markers: Markers | null = null
+  private orbitalLines: OrbitalLines | null = null
+  private router: LayerRouter | null = null
+  private readonly choreographies: Choreography[] = []
+  /** The globe sits at the origin; kept as a vector for the orbit maths. */
+  private readonly globeCenter = new Vector3()
 
   private readonly tierMonitor = new TierMonitor()
   private profile: TierProfile = this.tierMonitor.profile
@@ -121,6 +137,15 @@ export class World {
     this.globe.group.add(this.markers.group)
     this.sceneRear.add(this.globe.group)
 
+    // Guide lines are *not* children of the globe: they orbit the Earth, they
+    // do not turn with it. They stay in the rear scene so the sphere's depth
+    // correctly hides their far half.
+    this.orbitalLines = new OrbitalLines()
+    this.sceneRear.add(this.orbitalLines.group)
+
+    this.router = new LayerRouter(this.sceneRear, this.sceneFront)
+    this.buildChoreographies()
+
     // Seed orientation and theme from the current scroll position so the first
     // frame is already correct rather than easing in from a default.
     const initial = KEYFRAMES[0]!
@@ -136,6 +161,44 @@ export class World {
     })
 
     this.ready = true
+  }
+
+  /**
+   * Assemble every city's choreography once, at load.
+   *
+   * All six stay built for the life of the session. An inactive city has its
+   * motif root hidden and its landmarks outside their progress windows, which
+   * costs nothing per frame — and it means a city change is a visibility flip
+   * rather than a rebuild, which is what keeps transitions free of the hitch
+   * that constructing geometry mid-scroll would cause.
+   */
+  private buildChoreographies(): void {
+    const dpr = pixelRatioCap()
+
+    for (let index = 0; index < CITIES.length; index += 1) {
+      const city = cityAt(index)
+      const theme = THEMES[city.id]
+      const keyframe = KEYFRAMES[index * STATES_PER_CITY]!
+
+      // Screen-space direction of the sun for this city, used to bake the
+      // landmark's lit side so it agrees with the globe's terminator. The
+      // camera looks down -Z, so world X maps directly to screen X.
+      const lightX = Math.sin(keyframe.sunAz) * Math.cos(keyframe.sunEl)
+
+      const choreography = new Choreography(
+        city,
+        index,
+        CHOREOGRAPHIES[city.id],
+        theme,
+        this.globe!.sunDirection,
+        this.profile,
+        dpr,
+        lightX,
+      )
+
+      this.sceneRear.add(choreography.root)
+      this.choreographies.push(choreography)
+    }
   }
 
   /* ---------------------------------------------------------------------------
@@ -238,6 +301,11 @@ export class World {
 
     this.rendererRear?.setSize(width, height, false)
     this.rendererFront?.setSize(width, height, false)
+
+    // Landmark orbits are world-space, but how much of that world is visible
+    // is not — refit them whenever the framing changes.
+    const halfWidth = visibleHalfWidth(this.fitDistance, aspect)
+    for (const choreography of this.choreographies) choreography.fitViewport(halfWidth)
   }
 
   /**
@@ -265,6 +333,22 @@ export class World {
     this.camera.updateMatrixWorld()
 
     this.markers.update(progress, dt, themeLambda(reduced), this.camera, this.theme)
+    this.orbitalLines?.update(dt, this.theme.atmo, this.frame.atmoIntensity * 0.9, reduced)
+
+    if (this.router) {
+      for (const choreography of this.choreographies) {
+        choreography.update(
+          progress,
+          dt,
+          this.frame,
+          this.theme,
+          this.camera,
+          this.globeCenter,
+          this.router,
+          reduced,
+        )
+      }
+    }
 
     this.background.setRGB(this.theme.fog[0], this.theme.fog[1], this.theme.fog[2])
     this.rendererRear?.setClearColor(this.background, 1)
@@ -307,11 +391,53 @@ export class World {
     lerpTheme(this.theme, current, current, 0)
   }
 
+  /**
+   * A snapshot of scene state for `scripts/visual-check.mjs`.
+   *
+   * Exposed on `window` in the Stage effect. The harness needs to assert things
+   * that cannot be seen in a screenshot — which layer a landmark is on, whether
+   * its opacity changed while it was visible, whether a previous city's
+   * landmark is still in the open at a boundary.
+   */
+  inspect(): {
+    progress: number
+    tier: string
+    /** On-screen radius of the globe including its atmosphere, in CSS pixels. */
+    globeScreenRadius: number
+    /** Half the smaller viewport dimension. The globe must not exceed it. */
+    viewportLimit: number
+    cities: Array<{
+      city: string
+      presence: number
+      landmarks: ReadonlyArray<{ id: string; opacity: number; layer: string }>
+    }>
+  } {
+    const distance = this.fitDistance * this.frame.camDist
+    const height = Math.max(1, window.innerHeight)
+
+    return {
+      progress: this.progress,
+      tier: this.profile.tier,
+      globeScreenRadius: projectedGlobeRadius(distance, height, EFFECTIVE_RADIUS),
+      viewportLimit: Math.min(window.innerWidth, height) / 2,
+      cities: this.choreographies.map((choreography) => ({
+        city: choreography.city.id,
+        presence: choreography.presence(this.progress),
+        landmarks: choreography.landmarkStates,
+      })),
+    }
+  }
+
   dispose(): void {
     this.disposed = true
     this.ready = false
     for (const fn of this.teardown) fn()
     this.teardown = []
+    if (this.router) {
+      for (const choreography of this.choreographies) choreography.dispose(this.router)
+    }
+    this.choreographies.length = 0
+    this.orbitalLines?.dispose()
     this.globe?.dispose()
     this.markers?.dispose()
     this.rendererRear?.dispose()

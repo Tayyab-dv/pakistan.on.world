@@ -1,9 +1,32 @@
 import { useEffect, useRef } from 'react'
+import { MAX_STATE } from '../cities'
 import { scrollEngine } from '../core/scroll'
 import { world } from '../three/World'
 import { CityCopy } from './CityCopy'
 import { Grain } from './Grain'
 import { SolarStepper } from './SolarStepper'
+
+/**
+ * Inspection surface for `scripts/visual-check.mjs`.
+ *
+ * The harness has to assert things a screenshot cannot show — which layer a
+ * landmark is on, whether its opacity changed while it was in the open, whether
+ * a previous city's landmark is still visible at a boundary. Small, read-only,
+ * and it costs nothing to leave in the bundle.
+ */
+interface Inspector {
+  ready: () => boolean
+  inspect: () => ReturnType<typeof world.inspect>
+  snapToState: (state: number) => void
+  scrollToCity: (index: number) => void
+  maxState: number
+}
+
+declare global {
+  interface Window {
+    __turningWorld?: Inspector
+  }
+}
 
 /**
  * The pinned composition.
@@ -42,6 +65,14 @@ export function Stage() {
     window.addEventListener('resize', onResize, { passive: true })
     window.visualViewport?.addEventListener('resize', onResize, { passive: true })
 
+    window.__turningWorld = {
+      ready: () => world.isReady,
+      inspect: () => world.inspect(),
+      snapToState: (state) => scrollEngine.snapToState(state),
+      scrollToCity: (index) => scrollEngine.scrollToCity(index),
+      maxState: MAX_STATE,
+    }
+
     scrollEngine.start()
 
     return () => {
@@ -49,6 +80,7 @@ export function Stage() {
       unsubscribe?.()
       window.removeEventListener('resize', onResize)
       window.visualViewport?.removeEventListener('resize', onResize)
+      delete window.__turningWorld
     }
   }, [])
 
