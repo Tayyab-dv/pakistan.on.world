@@ -31,7 +31,15 @@ export interface EarthTextures {
   complete: boolean
 }
 
-const BASE = '/textures/earth'
+/**
+ * Built from `BASE_URL` rather than hardcoded to `/`.
+ *
+ * GitHub Pages serves a project site from `/<repo-name>/`, so an absolute
+ * `/textures/...` resolves against the domain root and 404s. The loader would
+ * then silently fall back to the procedural Earth — the site would work, but
+ * it would not be showing the planet.
+ */
+const BASE = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/textures/earth`
 
 function tryLoad(url: string): Promise<Texture | null> {
   return new Promise((resolve) => {

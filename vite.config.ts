@@ -4,7 +4,18 @@ import react from '@vitejs/plugin-react'
 
 const root = fileURLToPath(new URL('.', import.meta.url))
 
+/**
+ * Base path.
+ *
+ * GitHub Pages serves a project site from `/<repo-name>/`. The deploy workflow
+ * sets `VITE_BASE`; local dev and any root-served host leave it unset and get
+ * `/`. Keeping it configurable rather than hardcoding the repo name means the
+ * same build works on Pages, Netlify, or a plain static server.
+ */
+const base = process.env.VITE_BASE ?? '/'
+
 export default defineConfig({
+  base,
   plugins: [react()],
 
   // Multi-page so `/art.html` — the development contact sheet for the
