@@ -9,6 +9,9 @@ import { clamp01, smoothstep } from '../core/damp'
 import type { TierProfile } from '../core/tier'
 import { Landmark } from './Landmark'
 import type { LayerRouter } from './LayerRouter'
+import { Facets } from './primitives/Facets'
+import { Lattice } from './primitives/Lattice'
+import { LinePoints } from './primitives/LinePoints'
 import { ParticleField } from './primitives/ParticleField'
 import { Ribbon } from './primitives/Ribbon'
 import { Silhouette } from './primitives/Silhouette'
@@ -34,6 +37,9 @@ interface BuiltMotif {
   readonly particles?: ParticleField
   readonly ribbon?: Ribbon
   readonly silhouette?: Silhouette
+  readonly lattice?: Lattice
+  readonly linePoints?: LinePoints
+  readonly facets?: Facets
 }
 
 /** How far either side of a city boundary the motifs cross-fade, in states. */
@@ -82,6 +88,9 @@ export class Choreography {
             direction: landmarkScore.direction,
             phase: landmarkScore.phase,
             anchored: landmarkScore.anchored,
+            ...(landmarkScore.backdrop === undefined
+              ? {}
+              : { backdrop: landmarkScore.backdrop }),
             entry,
             exit,
           },
@@ -157,6 +166,64 @@ export class Choreography {
         this.placeObject(silhouette.group, motif)
         this.root.add(silhouette.group)
         return { motif, silhouette }
+      }
+
+      case 'lattice': {
+        const lattice = new Lattice(
+          {
+            pattern: motif.pattern,
+            fragments: motif.fragments,
+            columns: motif.columns,
+            rows: motif.rows,
+            size: motif.size,
+            scatter: motif.scatter,
+            seed: motif.seed,
+            opacity: motif.opacity,
+          },
+          sun,
+        )
+        this.placeObject(lattice.group, motif)
+        this.root.add(lattice.group)
+        return { motif, lattice }
+      }
+
+      case 'linepoints': {
+        const linePoints = new LinePoints(
+          {
+            kind: motif.shape,
+            count: motif.count,
+            span: motif.span,
+            depth: motif.depth,
+            ...(motif.rise === undefined ? {} : { rise: motif.rise }),
+            scale: motif.scaleFactor,
+            seed: motif.seed,
+            opacity: motif.opacity,
+            nodeSize: motif.nodeSize,
+          },
+          pixelRatio,
+        )
+        this.placeObject(linePoints.group, motif)
+        this.root.add(linePoints.group)
+        return { motif, linePoints }
+      }
+
+      case 'facets': {
+        const facets = new Facets(
+          {
+            divisions: motif.divisions,
+            width: motif.width,
+            height: motif.height,
+            relief: motif.relief,
+            roughness: motif.roughness,
+            seed: motif.seed,
+            opacity: motif.opacity,
+            ...(motif.rimStrength === undefined ? {} : { rimStrength: motif.rimStrength }),
+          },
+          sun,
+        )
+        this.placeObject(facets.mesh, motif)
+        this.root.add(facets.mesh)
+        return { motif, facets }
       }
     }
   }
@@ -244,6 +311,32 @@ export class Choreography {
         )
         item.silhouette.setOpacity(presence)
       }
+
+      if (item.lattice && motif.kind === 'lattice') {
+        item.lattice.setPalette(
+          paletteColour(theme, motif.colour),
+          motif.shadow ? paletteColour(theme, motif.shadow) : fog,
+          motif.rim ? paletteColour(theme, motif.rim) : theme.rim,
+        )
+        item.lattice.setOpacity(presence)
+      }
+
+      if (item.linePoints && motif.kind === 'linepoints') {
+        item.linePoints.setPalette(
+          paletteColour(theme, motif.colour),
+          paletteColour(theme, motif.node),
+        )
+        item.linePoints.setOpacity(presence)
+      }
+
+      if (item.facets && motif.kind === 'facets') {
+        item.facets.setPalette(
+          paletteColour(theme, motif.colour),
+          motif.shadow ? paletteColour(theme, motif.shadow) : fog,
+          motif.rim ? paletteColour(theme, motif.rim) : theme.rim,
+        )
+        item.facets.setOpacity(presence)
+      }
     }
   }
 
@@ -252,7 +345,10 @@ export class Choreography {
   }
 
   setPixelRatio(ratio: number): void {
-    for (const item of this.built) item.particles?.setPixelRatio(ratio)
+    for (const item of this.built) {
+      item.particles?.setPixelRatio(ratio)
+      item.linePoints?.setPixelRatio(ratio)
+    }
   }
 
   /** Landmark state, sampled by the verification harness. */
@@ -275,6 +371,9 @@ export class Choreography {
       item.particles?.dispose()
       item.ribbon?.dispose()
       item.silhouette?.dispose()
+      item.lattice?.dispose()
+      item.linePoints?.dispose()
+      item.facets?.dispose()
     }
     for (const landmark of this.landmarks) landmark.dispose(router)
     this.root.removeFromParent()

@@ -8,8 +8,16 @@
  * off-frame; this shows the art itself.
  */
 
+import { badshahiMosque } from './art/landmarks/badshahi-mosque'
 import { faisalMosque } from './art/landmarks/faisal-mosque'
+import { fishingDhow } from './art/landmarks/fishing-dhow'
+import { k2 } from './art/landmarks/k2'
+import { kohEBatilLighthouse } from './art/landmarks/koh-e-batil-lighthouse'
+import { mazarEQuaid } from './art/landmarks/mazar-e-quaid'
+import { merewetherClock } from './art/landmarks/merewether-clock'
+import { minarEPakistan } from './art/landmarks/minar-e-pakistan'
 import { pakistanMonument } from './art/landmarks/pakistan-monument'
+import { shigarFort } from './art/landmarks/shigar-fort'
 import { renderLandmark } from './art/render'
 import type { LandmarkArt } from './art/types'
 import { KEYFRAMES } from './cities/keyframes'
@@ -20,6 +28,15 @@ import { THEMES } from './cities/themes'
 const ENTRIES: ReadonlyArray<{ art: LandmarkArt; city: CityId }> = [
   { art: faisalMosque, city: 'islamabad' },
   { art: pakistanMonument, city: 'islamabad' },
+  { art: mazarEQuaid, city: 'karachi' },
+  { art: merewetherClock, city: 'karachi' },
+  { art: badshahiMosque, city: 'lahore' },
+  { art: minarEPakistan, city: 'lahore' },
+  // Peshawar is deliberately absent: it stays entirely procedural.
+  { art: kohEBatilLighthouse, city: 'gwadar' },
+  { art: fishingDhow, city: 'gwadar' },
+  { art: k2, city: 'skardu' },
+  { art: shigarFort, city: 'skardu' },
 ]
 
 function lightXFor(city: CityId): number {

@@ -59,6 +59,20 @@ export interface LandmarkConfig {
    * False for K2, which is a scaled backdrop peak rather than a low anchor.
    */
   readonly anchored: boolean
+
+  /**
+   * Never come in front of the Earth.
+   *
+   * K2 alone. The brief asks for it as "a towering backdrop presence", and at
+   * the scale a mountain needs to read as a mountain it simply obliterates the
+   * globe if it crosses the foreground — which costs the composition its hero.
+   *
+   * A backdrop keeps the same circular path but with its depth mirrored, so
+   * the near half of the orbit becomes a second pass behind: it drifts out to
+   * one limb, back behind, out to the other, and back. Both ends of the window
+   * still land directly behind the Earth, so the fade stays hidden.
+   */
+  readonly backdrop?: boolean
 }
 
 const _world = new Vector3()
@@ -163,9 +177,11 @@ export class Landmark {
 
     const theta = -Math.PI / 2 + config.direction * u * TAU + config.phase
 
-    // Position on the orbit, then tilt the whole plane.
+    // Position on the orbit, then tilt the whole plane. A backdrop mirrors its
+    // depth so the path never reaches positive z — in front of the Earth.
     const x = Math.cos(theta) * this.radius
-    const z = Math.sin(theta) * this.radius
+    const sweep = Math.sin(theta) * this.radius
+    const z = config.backdrop ? -Math.abs(sweep) : sweep
     const y = config.orbitY * this.scale
 
     const tilt = config.orbitTilt

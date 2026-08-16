@@ -1,4 +1,6 @@
 import type { Vector3 } from 'three'
+import type { LatticeMotifKind } from '../three/primitives/Lattice'
+import type { LinePointsKind } from '../three/primitives/LinePoints'
 import type { ParticleBehaviour } from '../three/primitives/ParticleField'
 import type { SilhouetteKind } from '../three/primitives/Silhouette'
 import type { LandmarkArt } from '../art/types'
@@ -102,7 +104,61 @@ export interface SilhouetteMotif extends Placement {
   readonly opacity: number
 }
 
-export type Motif = ParticleMotif | RibbonMotif | SilhouetteMotif
+export interface LatticeMotif extends Placement {
+  readonly kind: 'lattice'
+  readonly pattern: LatticeMotifKind
+  readonly colour: PaletteRole
+  readonly shadow?: PaletteRole
+  readonly rim?: PaletteRole
+  readonly fragments: number
+  readonly columns: number
+  readonly rows: number
+  readonly size: number
+  readonly scatter: number
+  readonly seed: number
+  readonly opacity: number
+}
+
+export interface LinePointsMotif extends Placement {
+  readonly kind: 'linepoints'
+  readonly shape: LinePointsKind
+  /** Colour of the structure. */
+  readonly colour: PaletteRole
+  /** Colour of the glowing nodes. */
+  readonly node: PaletteRole
+  readonly count: number
+  readonly span: number
+  readonly depth: number
+  /** Vertical scatter, so instances do not all hang on one flat line. */
+  readonly rise?: number
+  readonly scaleFactor: number
+  readonly seed: number
+  readonly opacity: number
+  readonly nodeSize: number
+}
+
+export interface FacetsMotif extends Placement {
+  readonly kind: 'facets'
+  readonly colour: PaletteRole
+  readonly shadow?: PaletteRole
+  readonly rim?: PaletteRole
+  readonly divisions: number
+  readonly width: number
+  readonly height: number
+  readonly relief: number
+  readonly roughness: number
+  readonly seed: number
+  readonly opacity: number
+  readonly rimStrength?: number
+}
+
+export type Motif =
+  | ParticleMotif
+  | RibbonMotif
+  | SilhouetteMotif
+  | LatticeMotif
+  | LinePointsMotif
+  | FacetsMotif
 
 /**
  * A landmark's spatial score, without the progress window — that is derived
@@ -117,6 +173,8 @@ export interface LandmarkScore {
   readonly direction: 1 | -1
   readonly phase: number
   readonly anchored: boolean
+  /** Never cross in front of the Earth. K2 only — see `LandmarkConfig`. */
+  readonly backdrop?: boolean
   /**
    * Which half of the city this landmark owns.
    * 'first' takes focus in states 1-2, 'second' in states 3-4.

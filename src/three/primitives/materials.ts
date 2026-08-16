@@ -41,6 +41,7 @@ const SURFACE_FRAGMENT = /* glsl */ `
   uniform vec3 uRim;
   uniform float uOpacity;
   uniform float uRimStrength;
+  uniform float uEdgeFade;
 
   varying vec3 vNormalW;
   varying vec3 vPositionW;
@@ -61,7 +62,17 @@ const SURFACE_FRAGMENT = /* glsl */ `
     float fresnel = pow(1.0 - max(dot(normalW, viewDir), 0.0), 2.2);
     base += uRim * fresnel * uRimStrength;
 
-    gl_FragColor = vec4(base, uOpacity);
+    // Optional border falloff. A faceted plane is generated on a rectangular
+    // grid, and without this its four straight edges are plainly visible — the
+    // terrain reads as a card lying in space rather than as ground continuing
+    // out of frame.
+    float alpha = uOpacity;
+    if (uEdgeFade > 0.0) {
+      vec2 d = min(vUv, 1.0 - vUv);
+      alpha *= smoothstep(0.0, uEdgeFade, d.x) * smoothstep(0.0, uEdgeFade, d.y);
+    }
+
+    gl_FragColor = vec4(base, alpha);
 
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
@@ -79,6 +90,8 @@ export function createSurfaceMaterial(sun: Vector3): ShaderMaterial {
       uRim: { value: new Color(0.6, 0.8, 1) },
       uOpacity: { value: 1 },
       uRimStrength: { value: 0.8 },
+      // Off by default; only the faceted terrain needs its borders softened.
+      uEdgeFade: { value: 0 },
     },
     transparent: true,
     depthWrite: false,
