@@ -13,3 +13,6 @@ Thumbs.db
 public/textures/earth/_source/
 
 *.tsbuildinfo
+
+.vercel
+.env*

@@ -1,0 +1,7 @@
+node_modules
+dist
+.visual
+.vite
+public/textures/earth/_source
+.env*
+.vercel
